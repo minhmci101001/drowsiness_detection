@@ -31,6 +31,9 @@ class AlertSystem:
         self._current_level = DrowsinessLevel.AWAKE
         self._pygame_ok = False
 
+        # Cache Sound objects — tránh load từ disk mỗi lần alert
+        self._sound_cache: dict = {}
+
         # Event để ra lệnh dừng giữa chừng cho thread âm thanh
         self._stop_event = threading.Event()
 
@@ -42,10 +45,19 @@ class AlertSystem:
             pygame.mixer.init(frequency=44100, size=-16, channels=1, buffer=512)
             self._pygame_ok = True
             self.logger.info("pygame audio initialized")
+            # Pre-load sound files vào bộ nhớ ngay lúc init
+            for path in [config.ALERT_SOUND_NORMAL, config.ALERT_SOUND_URGENT,
+                         config.ALERT_SOUND_CALIB_DONE]:
+                if os.path.exists(path):
+                    try:
+                        self._sound_cache[path] = pygame.mixer.Sound(path)
+                    except Exception as e:
+                        self.logger.debug(f"Could not pre-load {path}: {e}")
         except ImportError:
             self.logger.warning("pygame not installed — audio alerts disabled")
         except Exception as e:
             self.logger.warning(f"pygame init failed: {e} — audio alerts disabled")
+
 
     def process_absence(self, absence_level):
         """Cảnh báo khi mất mặt liên tục — gọi từ pipeline."""
@@ -127,7 +139,9 @@ class AlertSystem:
         if self._pygame_ok and os.path.exists(filepath):
             try:
                 import pygame
-                sound = pygame.mixer.Sound(filepath)
+                # Dùng cache — tránh load từ disk mỗi lần alert
+                sound = self._sound_cache.get(filepath) or pygame.mixer.Sound(filepath)
+
                 for _ in range(repeat):
                     if self._stop_event.is_set():
                         return   # ← driver đã tỉnh, dừng ngay

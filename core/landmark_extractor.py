@@ -25,6 +25,15 @@ from typing import Dict, Optional, Tuple
 import logging
 import config
 
+try:
+    import mediapipe as mp
+    from mediapipe.tasks.python import vision as mp_vision
+    from mediapipe.tasks.python.core.base_options import BaseOptions
+except ImportError:
+    mp = None  # type: ignore
+    mp_vision = None  # type: ignore
+    BaseOptions = None  # type: ignore
+
 _MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "face_landmarker.task")
 _MODEL_URL   = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
 
@@ -89,9 +98,8 @@ class LandmarkExtractor:
     def _init_mediapipe(self):
         try:
             _ensure_model()
-            import mediapipe as mp
-            from mediapipe.tasks.python import vision as mp_vision
-            from mediapipe.tasks.python.core.base_options import BaseOptions
+            if mp is None:
+                raise ImportError("mediapipe not installed!")
 
             options = mp_vision.FaceLandmarkerOptions(
                 base_options=BaseOptions(model_asset_path=_MODEL_PATH),
@@ -129,7 +137,6 @@ class LandmarkExtractor:
             ], dtype=np.float64)
 
         # Chuyển frame sang mediapipe Image format
-        import mediapipe as mp
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
 

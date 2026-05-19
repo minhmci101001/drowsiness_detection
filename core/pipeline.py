@@ -19,6 +19,7 @@ import cv2
 import time
 import logging
 import numpy as np
+from collections import deque
 from typing import Optional
 
 from core.face_detector      import FaceDetector
@@ -52,8 +53,10 @@ class DrowsinessPipeline:
         self.event_logger    = EventLogger()
 
         # FPS tracking
-        self._fps_times = []
+        self._fps_times: deque = deque(maxlen=30)
         self._fps = 0.0
+        self._session_start = time.time()
+        self._alert_count = 0
 
         # Sync calibrator → analyzer nếu đã load profile
         if self.calibrator.is_calibrated:
@@ -79,10 +82,17 @@ class DrowsinessPipeline:
         while True:
             ret, frame = cap.read()
             if not ret:
-                self.logger.warning("Cannot read frame — end of stream or camera error")
+                elapsed = time.time() - self._session_start
+                self.logger.info(
+                    f"Stream ended — session {elapsed:.0f}s, "
+                    f"alerts triggered: {self._alert_count}"
+                )
                 break
 
-            # ── FPS ──────────────────────────────────────────────────────
+            # Flip ngang — camera thường bị ngược chiều, flip để hiển thị đúng
+            frame = cv2.flip(frame, 1)
+
+            # ── FPS ──────────────────────────────────────────────────────────────
             self._fps = self._calc_fps()
 
             # ── 1. Face detection (Cải tiến 5: Skip frame) ─────────────────────
@@ -187,6 +197,8 @@ class DrowsinessPipeline:
                     # PERCLOS / pitch cao nhưng mắt đang mở → không kêu liên tục
                     if analysis.ear_flag:
                         self.alert.process(analysis.level)
+                        if analysis.level != DrowsinessLevel.AWAKE:
+                            self._alert_count += 1
                     else:
                         self.alert.process(DrowsinessLevel.AWAKE)
 
@@ -214,11 +226,7 @@ class DrowsinessPipeline:
                             (face.x1, face.y1 - 8),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1)
 
-            # Vẽ absence warning lên rendered frame
-            if absence.should_alert:
-                self.display.draw_absence_warning(
-                    rendered, absence.duration_sec, absence.level.value
-                )
+            # Absence warning đã được vẽ bên trong render() — không gọi lại ở đây
 
             cv2.imshow("Drowsiness Detection", rendered)
 
@@ -251,8 +259,6 @@ class DrowsinessPipeline:
     def _calc_fps(self) -> float:
         now = time.time()
         self._fps_times.append(now)
-        if len(self._fps_times) > 30:
-            self._fps_times.pop(0)
         if len(self._fps_times) < 2:
             return 0.0
         return (len(self._fps_times) - 1) / (self._fps_times[-1] - self._fps_times[0])

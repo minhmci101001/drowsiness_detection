@@ -33,7 +33,9 @@ class Calibrator:
     Thu thập và tính EAR baseline cá nhân hóa.
     """
 
-    PROFILE_PATH = "calibration_profile.json"
+    # Luôn lưu cạnh package root (thư mục chứa drowsiness_detection/),
+    # bất kể user chạy `python main.py` từ đâu.
+    PROFILE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "calibration_profile.json")
 
     def __init__(self, logger: Optional[logging.Logger] = None):
         self.logger = logger or logging.getLogger(__name__)

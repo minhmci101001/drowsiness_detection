@@ -174,9 +174,13 @@ class DisplayRenderer:
         cv2.rectangle(frame, (0, 0), (w, 65), (0, 0, 0), -1)
         cv2.rectangle(frame, (0, 0), (w, 65), color, 2)
 
-        cv2.putText(frame, text,
-                    (w // 2 - len(text) * 12, 45),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.2, color, 2)
+        font       = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 1.2
+        thickness  = 2
+        (text_w, _), _ = cv2.getTextSize(text, font, font_scale, thickness)
+        x = (w - text_w) // 2
+        cv2.putText(frame, text, (x, 45), font, font_scale, color, thickness)
+
 
     # ── Metrics panel ─────────────────────────────────────────────────────
     def _draw_metrics_panel(self, frame, analysis: AnalysisResult, w, h):

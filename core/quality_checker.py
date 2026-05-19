@@ -13,6 +13,7 @@ Xử lý các trường hợp đặc biệt:
 
 import cv2
 import numpy as np
+from collections import deque
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
@@ -50,7 +51,8 @@ class FrameQualityChecker:
     """
 
     def __init__(self):
-        self._brightness_history = []   # lưu 30 frame gần nhất để smooth
+        # deque tự động drop phần tử cũ — O(1) thay vì O(n) của list.pop(0)
+        self._brightness_history: deque = deque(maxlen=30)
         self._history_size = 30
 
     def check(
@@ -80,10 +82,8 @@ class FrameQualityChecker:
         brightness = self._calc_brightness(frame)
         blur_score = self._calc_blur(frame)
 
-        # Cập nhật history
+        # Cập nhật history (deque tự giới hạn maxlen)
         self._brightness_history.append(brightness)
-        if len(self._brightness_history) > self._history_size:
-            self._brightness_history.pop(0)
 
         # ── Kiểm tra từng điều kiện ──────────────────────────────────────
 
@@ -120,14 +120,8 @@ class FrameQualityChecker:
                 message=f"Overexposed: {brightness:.1f} (max={config.MAX_BRIGHTNESS})"
             )
 
-        # 4. Phản chiếu kính (glasses reflection)
-        # Dấu hiệu: EAR variance rất thấp VÀ EAR đang cao (mắt mở)
-        # Không flag nếu EAR thấp vì lúc đó variance thấp là bình thường (mắt đang nhắm)
-        # ear_variance thấp + EAR cao = reflection; ear_variance thấp + EAR thấp = đang nhắm mắt
-        if ear_variance is not None and ear_variance < config.REFLECTION_EAR_VAR_MAX:
-            # Chỉ coi là reflection nếu chúng ta không đang track EAR thấp
-            # (ear_variance thấp khi mắt nhắm là bình thường)
-            pass  # Bỏ qua hoàn toàn check này — không đủ tin cậy để dùng
+        # Reflection check đã bỏ qua — EAR variance thấp có thể do mắt đang nhắm,
+        # không đủ tin cậy để phân biệt với phản chiếu kính thật.
 
         # 4b. Kính râm (Cải tiến 3a: sunglasses detection)
         # Vùng mắt tối hơn nhiều so với mặt → kính râm che mắt

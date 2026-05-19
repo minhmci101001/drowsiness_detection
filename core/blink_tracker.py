@@ -38,9 +38,8 @@ class BlinkTracker:
       OPEN (blink hoàn tất)
     """
 
-    STATE_OPEN    = "open"
-    STATE_CLOSING = "closing"
-    STATE_CLOSED  = "closed"
+    STATE_OPEN   = "open"
+    STATE_CLOSED = "closed"   # gộp CLOSING + CLOSED — bắt đầu tính ngay khi EAR xuống dưới threshold
 
     def __init__(self):
         self._state = self.STATE_OPEN
@@ -67,18 +66,13 @@ class BlinkTracker:
         is_closed = ear < self._ear_threshold
 
         # ── State machine ──────────────────────────────────────────────────
+        # Lý do gộp CLOSING+CLOSED: @ 30fps, một blink thật chỉ cần 2 frame (67ms).
+        # Nếu có CLOSING riêng, state chỉ ở CLOSING đúng 1 frame rồi mắt mở lại
+        # → bỏ sot blink. Giờ chỉ cần EAR xuống là bắt đầu đếm, mắt mở lại là ghi nhận.
         if self._state == self.STATE_OPEN:
             if is_closed:
-                self._state = self.STATE_CLOSING
-                self._blink_start = now
-
-        elif self._state == self.STATE_CLOSING:
-            if is_closed:
                 self._state = self.STATE_CLOSED
-            else:
-                # Mắt mở lại ngay → false blink (noise), reset
-                self._state = self.STATE_OPEN
-                self._blink_start = None
+                self._blink_start = now
 
         elif self._state == self.STATE_CLOSED:
             if not is_closed:

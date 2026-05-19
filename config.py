@@ -37,7 +37,7 @@ MAR_SMOOTH_ALPHA    = 0.4
 # ─────────────────────────────────────────────
 HEAD_PITCH_THRESHOLD = 15.0        # độ gật đầu xuống (degree)
 HEAD_ROLL_THRESHOLD  = 20.0        # độ nghiêng đầu (degree)
-HEAD_YAW_THRESHOLD   = 35.0        # độ quay mặt ngang — quá ngưỡng này skip EAR
+HEAD_YAW_THRESHOLD   = 35.0        # độ quay mặt ngang — dùng cho cả analyzer và quality_checker
 HEAD_POSE_CONSEC     = 30          # số frame liên tiếp → flag
 
 # ─────────────────────────────────────────────
@@ -60,7 +60,8 @@ MIN_FACE_CONFIDENCE     = 0.75     # YOLO/MediaPipe confidence tối thiểu
 MIN_LANDMARK_VISIBILITY = 0.6      # visibility của landmark tối thiểu
 MIN_BRIGHTNESS          = 40       # pixel brightness trung bình tối thiểu (0–255)
 MAX_BRIGHTNESS          = 220      # quá sáng cũng bỏ qua (phản chiếu kính)
-YAW_SKIP_THRESHOLD      = 35.0     # quay mặt quá ngưỡng này → bỏ qua EAR frame đó
+# YAW_SKIP_THRESHOLD đã được gộp vào HEAD_YAW_THRESHOLD (cùng giá trị 35°)
+YAW_SKIP_THRESHOLD      = HEAD_YAW_THRESHOLD   # alias — giữ lại để tương thích với quality_checker
 REFLECTION_EAR_VAR_MAX  = 0.02     # EAR variance thấp bất thường → nghi phản chiếu kính
 
 # ─────────────────────────────────────────────
@@ -122,8 +123,8 @@ EYE_PROFILES = {
         "score_weight_blink":   0.10,
     },
     "narrow": {
-        "threshold_ratio":      0.80,
-        "ear_consec_frames":    50,    # ~5s tại 10fps thực tế
+        "threshold_ratio":      0.80,  # giống normal: EAR thấp hơn 80% baseline = nhắm mắt
+        "ear_consec_frames":    50,    # ~5s tại 10fps (như yêu cầu)
         "score_weight_ear":     0.45,
         "score_weight_head_pose": 0.20,
         "score_weight_yawn":    0.15,
@@ -131,10 +132,10 @@ EYE_PROFILES = {
         "score_weight_blink":   0.10,
     },
     "very_narrow": {
-        "threshold_ratio":      0.78,
-        "ear_consec_frames":    60,    # ~6s tại 10fps
-        "score_weight_ear":     0.35,
-        "score_weight_head_pose": 0.25,
+        "threshold_ratio":      0.80,
+        "ear_consec_frames":    60,    # ~6s tại 10fps (thận trọng hơn một chút)
+        "score_weight_ear":     0.40,
+        "score_weight_head_pose": 0.20,
         "score_weight_yawn":    0.15,
         "score_weight_perclos": 0.15,
         "score_weight_blink":   0.10,
